@@ -1157,20 +1157,42 @@ async function stampaScontrino() {
   ctx.textAlign = "right";
   ctx.fillText(euro(totale), W - PAD, y);
 
-  canvas.toBlob((blob) => {
-    if (!blob) { alert("Errore nella generazione dello scontrino."); return; }
-    // La scheda è già aperta da inizio funzione (per evitare il blocco popup
-    // di Safari): ora ci carichiamo dentro l'immagine appena pronta. Da lì
-    // tieni premuto sull'immagine per salvarla in Foto o condividerla —
-    // così tra le app potrebbe comparire anche Labelife.
-    const url = URL.createObjectURL(blob);
-    if (nuovaScheda) {
-      nuovaScheda.location.href = url;
-    } else {
-      alert("Il browser ha bloccato l'apertura della nuova scheda. Controlla i permessi popup di Safari (Impostazioni → Safari → Blocca popup) e riprova.");
-    }
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  }, "image/png");
+  // Trasformiamo il disegno (già corretto, senza tagli) in un vero PDF:
+  // Labelife intercetta i PDF nel pannello di condivisione (come per le
+  // etichette di spedizione di Shopify), ma non le semplici immagini.
+  if (!window.jspdf) {
+    alert("Libreria PDF non ancora caricata, controlla la connessione e riprova tra un attimo.");
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const pdfWidthMm = 72; // corrisponde alla larghezza del rotolo da 80mm (area stampabile)
+  const pdfHeightMm = pdfWidthMm * (H / W);
+  const pdf = new jsPDF({ unit: "mm", format: [pdfWidthMm, pdfHeightMm] });
+  pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, pdfWidthMm, pdfHeightMm);
+  const pdfBlob = pdf.output("blob");
+  const fileName = "scontrino-" + slugFile(currentTableLabel) + ".pdf";
+  const file = new File([pdfBlob], fileName, { type: "application/pdf" });
+
+  // Prova prima la condivisione nativa: se Labelife è installata, tra le
+  // app disponibili dovrebbe comparire proprio come per un PDF di Shopify.
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: "Scontrino " + currentTableLabel });
+      if (nuovaScheda && !nuovaScheda.closed) nuovaScheda.close();
+      return;
+    } catch (e) { /* condivisione annullata: proseguiamo con la scheda già aperta */ }
+  }
+
+  // Fallback: mostra il PDF nella scheda aperta a inizio funzione
+  // (evita il blocco popup di Safari, che richiede l'apertura immediata al click)
+  const url = URL.createObjectURL(pdfBlob);
+  if (nuovaScheda && !nuovaScheda.closed) {
+    nuovaScheda.location.href = url;
+  } else {
+    const scheda2 = window.open(url, "_blank");
+    if (!scheda2) alert("Il browser ha bloccato l'apertura della nuova scheda. Controlla i permessi popup di Safari (Impostazioni → Safari → Blocca popup) e riprova.");
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 $("#btn-stampa-scontrino").addEventListener("click", stampaScontrino);
