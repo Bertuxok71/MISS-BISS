@@ -1,3 +1,4 @@
+
 // ====================================================================
 // ORDINI PIZZERIA — app.js
 // ====================================================================
@@ -1062,12 +1063,6 @@ function wrapCanvasText(ctx, text, maxWidth) {
 }
 
 async function stampaScontrino() {
-  // Va aperta SUBITO, in modo sincrono, appena parte il click — altrimenti
-  // Safari su iPhone/iPad la blocca come popup non richiesto direttamente
-  // dall'utente (succede appena il resto del codice fa qualcosa di asincrono
-  // prima di aprirla). Poi ci mettiamo dentro l'immagine quando è pronta.
-  const nuovaScheda = window.open("", "_blank");
-
   const ordiniTavolo = ordiniTavoloCorrente();
   const righe = [];
   let totale = 0;
@@ -1178,21 +1173,22 @@ async function stampaScontrino() {
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: "Scontrino " + currentTableLabel });
-      if (nuovaScheda && !nuovaScheda.closed) nuovaScheda.close();
       return;
-    } catch (e) { /* condivisione annullata: proseguiamo con la scheda già aperta */ }
+    } catch (e) { /* condivisione annullata: proseguiamo col download qui sotto */ }
   }
 
-  // Fallback: mostra il PDF nella scheda aperta a inizio funzione
-  // (evita il blocco popup di Safari, che richiede l'apertura immediata al click)
+  // Fallback: scarica direttamente il PDF (finisce in File > Download).
+  // Niente più scheda nuova: su iOS aprire un file generato al volo in
+  // un'altra scheda è inaffidabile (resta bianca). Il download diretto
+  // invece avviene nella stessa pagina, senza questo problema.
   const url = URL.createObjectURL(pdfBlob);
-  if (nuovaScheda && !nuovaScheda.closed) {
-    nuovaScheda.location.href = url;
-  } else {
-    const scheda2 = window.open(url, "_blank");
-    if (!scheda2) alert("Il browser ha bloccato l'apertura della nuova scheda. Controlla i permessi popup di Safari (Impostazioni → Safari → Blocca popup) e riprova.");
-  }
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 $("#btn-stampa-scontrino").addEventListener("click", stampaScontrino);
