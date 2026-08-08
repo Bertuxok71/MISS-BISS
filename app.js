@@ -1,4 +1,3 @@
-
 // ====================================================================
 // ORDINI PIZZERIA — app.js
 // ====================================================================
@@ -1160,10 +1159,8 @@ async function stampaScontrino() {
     return;
   }
   const { jsPDF } = window.jspdf;
-  const pdfWidthMm = 72; // corrisponde alla larghezza del rotolo da 80mm (area stampabile)
-  const pdfHeightMm = pdfWidthMm * (H / W);
-  const pdf = new jsPDF({ unit: "mm", format: [pdfWidthMm, pdfHeightMm] });
-  pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, pdfWidthMm, pdfHeightMm);
+  const pdf = new jsPDF({ orientation: W > H ? "l" : "p", unit: "pt", format: [W, H] });
+  pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, W, H);
   const pdfBlob = pdf.output("blob");
   const fileName = "scontrino-" + slugFile(currentTableLabel) + ".pdf";
   const file = new File([pdfBlob], fileName, { type: "application/pdf" });
