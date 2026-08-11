@@ -143,6 +143,10 @@ body{
 /* MENU */
 .menu-cat{ margin-bottom: 22px; }
 .menu-cat h4{ color:var(--flame); font-size:0.95rem; text-transform:uppercase; letter-spacing:0.04em; margin:0 0 10px;}
+.menu-search{
+  width:100%; background: var(--surface-2); border:1px solid var(--line); color:var(--text);
+  border-radius:14px; padding:16px 18px; font-size:1.15rem; font-weight:600; margin-bottom:14px; font-family:inherit;
+}
 .dish-row{
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   background:var(--surface); border:1px solid var(--line); border-radius:12px;
