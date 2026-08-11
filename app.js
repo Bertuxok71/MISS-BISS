@@ -505,6 +505,8 @@ function selectTable(key, label, readyBy) {
   currentTableLabel = label;
   currentReadyBy = readyBy || null;
   cart = [];
+  menuSearchQuery = "";
+  $("#menu-search-input").value = "";
   $("#tavolo-label").textContent = label;
   $("#cameriere-sale-list").classList.add("hidden");
   $("#cameriere-tables").classList.add("hidden");
@@ -519,12 +521,21 @@ function selectTable(key, label, readyBy) {
 // ====================================================================
 // SALA — MENU
 // ====================================================================
+let menuSearchQuery = "";
+$("#menu-search-input").addEventListener("input", e => {
+  menuSearchQuery = e.target.value.trim().toLowerCase();
+  renderMenu();
+});
+
 function renderMenu() {
   const container = $("#menu-container");
   container.innerHTML = "";
+  let trovatiTotali = 0;
   state.categories.forEach(cat => {
-    const dishes = state.dishes.filter(d => d.categoryId === cat.id);
+    const dishes = state.dishes.filter(d => d.categoryId === cat.id
+      && (!menuSearchQuery || d.name.toLowerCase().includes(menuSearchQuery)));
     if (dishes.length === 0) return;
+    trovatiTotali += dishes.length;
     const wrap = document.createElement("div");
     wrap.className = "menu-cat";
     wrap.innerHTML = `<h4>${cat.name}</h4>`;
@@ -546,7 +557,36 @@ function renderMenu() {
   });
   if (state.categories.length === 0) {
     container.innerHTML = '<p class="hint-text">Nessun piatto configurato. Vai in Impostazioni → Piatti per aggiungerne.</p>';
+  } else if (trovatiTotali === 0) {
+    container.innerHTML = '<p class="hint-text">Nessun piatto trovato per "' + menuSearchQuery + '".</p>';
   }
+}
+
+// Crea un gruppo (titolo + barra di ricerca + lista) dove le righe si
+// filtrano digitando, utile quando la lista di ingredienti/varianti è lunga.
+// buildRowFn(item) deve restituire l'elemento riga già pronto (con i suoi
+// event listener collegati) per un singolo elemento della lista.
+function creaGruppoConRicerca(titolo, items, placeholder, buildRowFn) {
+  const g = document.createElement("div");
+  g.className = "opt-group";
+  const searchId = "search-" + uid();
+  g.innerHTML = `<h5>${titolo}</h5><input type="text" class="ingredienti-search" id="${searchId}" placeholder="${placeholder}">`;
+  const listWrap = document.createElement("div");
+  g.appendChild(listWrap);
+
+  function renderRighe(query) {
+    listWrap.innerHTML = "";
+    const q = query.trim().toLowerCase();
+    const filtrati = q ? items.filter(it => it.name.toLowerCase().includes(q)) : items;
+    if (filtrati.length === 0) {
+      listWrap.innerHTML = '<p class="hint-text">Nessun risultato.</p>';
+      return;
+    }
+    filtrati.forEach(item => listWrap.appendChild(buildRowFn(item)));
+  }
+  renderRighe("");
+  g.querySelector("#" + searchId).addEventListener("input", e => renderRighe(e.target.value));
+  return g;
 }
 
 // ---------- MODALE PERSONALIZZAZIONE PIATTO ----------
@@ -587,18 +627,16 @@ function openDishModal(dish) {
     }
 
     if (extra.length > 0) {
-      const g = document.createElement("div");
-      g.className = "opt-group";
-      g.innerHTML = "<h5>Aggiungi extra</h5>";
-      extra.forEach(ing => {
+      const g = creaGruppoConRicerca("Aggiungi extra", extra, "🔍 Cerca ingrediente...", ing => {
         const row = document.createElement("div");
         row.className = "opt-row";
-        row.innerHTML = `<input type="checkbox" id="ex-${ing.id}"><label for="ex-${ing.id}">${ing.name}</label><span class="opt-price">+${euro(ing.price || 0)}</span>`;
+        const checked = modalSelExtra.has(ing.id) ? "checked" : "";
+        row.innerHTML = `<input type="checkbox" id="ex-${ing.id}" ${checked}><label for="ex-${ing.id}">${ing.name}</label><span class="opt-price">+${euro(ing.price || 0)}</span>`;
         row.querySelector("input").addEventListener("change", e => {
           e.target.checked ? modalSelExtra.add(ing.id) : modalSelExtra.delete(ing.id);
           updateModalPrice();
         });
-        g.appendChild(row);
+        return row;
       });
       body.appendChild(g);
     }
@@ -812,18 +850,16 @@ function renderFamigliaSlotOpzioniInto(box, i) {
     box.appendChild(g);
   }
   if (extra.length > 0) {
-    const g = document.createElement("div");
-    g.className = "opt-group";
-    g.innerHTML = "<h5>Aggiungi extra</h5>";
-    extra.forEach(ing => {
+    const g = creaGruppoConRicerca("Aggiungi extra", extra, "🔍 Cerca ingrediente...", ing => {
       const row = document.createElement("div");
       row.className = "opt-row";
-      row.innerHTML = `<input type="checkbox" id="fam-ex-${i}-${ing.id}"><label for="fam-ex-${i}-${ing.id}">${ing.name}</label><span class="opt-price">+${euro(ing.price || 0)}</span>`;
+      const checked = slot.extra.has(ing.id) ? "checked" : "";
+      row.innerHTML = `<input type="checkbox" id="fam-ex-${i}-${ing.id}" ${checked}><label for="fam-ex-${i}-${ing.id}">${ing.name}</label><span class="opt-price">+${euro(ing.price || 0)}</span>`;
       row.querySelector("input").addEventListener("change", e => {
         e.target.checked ? slot.extra.add(ing.id) : slot.extra.delete(ing.id);
         aggiornaPrezzoFamiglia();
       });
-      g.appendChild(row);
+      return row;
     });
     box.appendChild(g);
   }
