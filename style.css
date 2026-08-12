@@ -275,7 +275,7 @@ body{
 #qty-val, #tavoli-val{ font-weight:700; font-size:1.2rem; min-width:20px; text-align:center; }
 
 /* CUCINA */
-.screen-body-cucina{ max-width: 900px; }
+.screen-body-cucina{ max-width: 1300px; }
 .cucina-lista{ display:flex; flex-direction:column; gap:12px; }
 /* Su schermi larghi (iPad e superiori): griglia 2 colonne x 2 righe = 4 ordini visibili */
 @media (min-width: 700px){
@@ -316,7 +316,7 @@ body{
 .status-btn.active.done{ background: var(--basil); border-color:var(--basil); }
 .status-btn.active.prep{ background: var(--blue); border-color:var(--blue); }
 .cucina-doppia-colonna{
-  display:flex; gap:50px; align-items:flex-start;
+  display:flex; gap:16px; align-items:flex-start;
 }
 .cucina-colonna{
   flex:1; min-width:0; display:flex; flex-direction:column;
