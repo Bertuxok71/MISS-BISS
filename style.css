@@ -331,7 +331,7 @@ body{
   padding-right:4px;
 }
 .cucina-scroll-singola{ display:flex; flex-direction:column; gap:12px; }
-.cucina-scroll-griglia{ display:flex; flex-direction:column; gap:12px; }
+.cucina-scroll-griglia{ display:flex; flex-direction:column; gap:24px; }
 @media (min-width: 700px){
   .cucina-scroll-griglia{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; align-content:start; }
 }
