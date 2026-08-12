@@ -309,7 +309,7 @@ body{
 .ordine-status-btns{ display:flex; gap:8px; margin-top:12px; }
 .status-btn{
   flex:1; padding:10px; border-radius:10px; border:1px solid var(--line);
-  background:var(--surface-2); color:var(--text-dim); font-weight:700; font-size:0.85rem;
+  background:var(--surface-2); color:var(--text-dim); font-weight:1300; font-size:0.85rem;
 }
 .status-btn.active{ background: var(--flame); color:#fff; border-color:var(--flame); }
 .status-btn.active.done{ background: var(--basil); border-color:var(--basil); }
