@@ -318,7 +318,7 @@ body{
   display:flex; gap:16px; align-items:flex-start;
 }
 .cucina-colonna{
-  flex:1; min-width:500px; ; display:flex; flex-direction:column;
+  flex:1; min-width:100px; ; display:flex; flex-direction:column;
 }
 .cucina-colonna-titolo{
   flex:1; min-width:800px; ; display:flex; flex-direction:column;
