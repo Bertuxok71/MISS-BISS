@@ -221,12 +221,14 @@
     <h2>🍕 Cucina</h2>
     <button id="btn-sound-toggle-cucina" class="icon-btn">🔊</button>
   </header>
-  <div class="screen-body screen-body-cucina">
-    <div id="cucina-lista" class="cucina-lista"></div>
-    <div id="cucina-paginazione" class="cucina-paginazione hidden">
-      <button id="pag-prec-cucina" class="pill-btn">‹ Prec.</button>
-      <span id="pag-info-cucina">1/1</span>
-      <button id="pag-succ-cucina" class="pill-btn">Succ. ›</button>
+  <div class="screen-body screen-body-cucina cucina-doppia-colonna">
+    <div class="cucina-colonna">
+      <h4 class="cucina-colonna-titolo">🥡 Asporto</h4>
+      <div id="cucina-lista-asporto" class="cucina-scroll cucina-scroll-singola"></div>
+    </div>
+    <div class="cucina-colonna">
+      <h4 class="cucina-colonna-titolo">🍽️ Tavoli</h4>
+      <div id="cucina-lista-sala" class="cucina-scroll cucina-scroll-griglia"></div>
     </div>
   </div>
 </div>

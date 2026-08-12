@@ -1265,26 +1265,95 @@ $("#btn-chiudi-conto").addEventListener("click", () => {
 });
 
 // ====================================================================
-// CUCINA / BAR (schermate separate, stessa logica generica)
+// CUCINA / BAR
 // ====================================================================
-let paginaPerReparto = { cucina: 0, bar: 0 };
+let paginaPerReparto = { bar: 0 };
 
 function statusFieldPerReparto(reparto) {
   return reparto === "bar" ? "statusBar" : "statusCucina";
 }
 
-$("#pag-prec-cucina").addEventListener("click", () => { if (paginaPerReparto.cucina > 0) { paginaPerReparto.cucina--; renderCucina(); } });
-$("#pag-succ-cucina").addEventListener("click", () => { paginaPerReparto.cucina++; renderCucina(); });
 $("#pag-prec-bar").addEventListener("click", () => { if (paginaPerReparto.bar > 0) { paginaPerReparto.bar--; renderBar(); } });
 $("#pag-succ-bar").addEventListener("click", () => { paginaPerReparto.bar++; renderBar(); });
 
-function renderCucina() { renderRepartoView("cucina", "cucina-lista", "cucina-paginazione", "pag-info-cucina", "pag-prec-cucina", "pag-succ-cucina"); }
-function renderBar() { renderRepartoView("bar", "bar-lista", "bar-paginazione", "pag-info-bar", "pag-prec-bar", "pag-succ-bar"); }
+// Crea la card di un ordine per la vista cucina/bar (riutilizzata ovunque)
+function creaOrdineCard(o, reparto, statusField) {
+  const statusAttuale = o[statusField] || "nuovo";
+  const inRitardo = isOrdineInRitardo(o);
+  const card = document.createElement("div");
+  card.className = "ordine-card status-" + statusAttuale + (inRitardo ? " in-ritardo" : "");
+  const ora = o.createdAt?.toDate ? o.createdAt.toDate().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : "--:--";
+  const oraRitiro = o.readyBy ? new Date(o.readyBy).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : null;
 
-function renderRepartoView(reparto, listaId, pagId, infoId, precId, succId) {
-  const lista = $("#" + listaId);
-  if (!lista) return;
+  let itemsHtml = "";
+  (o.items || []).filter(item => (item.reparto || "cucina") === reparto).forEach(item => {
+    let mods = buildMods(item);
+    itemsHtml += `
+      <div class="ordine-item">
+        <div class="ordine-item-nome">${qtyLabel(item)} ${item.name}</div>
+        ${mods.length ? `<div class="ordine-item-mod">${mods.join(" · ")}</div>` : ""}
+        ${item.note ? `<div class="ordine-item-nota">"${item.note}"</div>` : ""}
+      </div>`;
+  });
+
+  const nota = state.tableNotes[o.table];
+
+  card.innerHTML = `
+    <div class="ordine-top">
+      <span class="ordine-tavolo">${o.tableLabel || o.table}</span>
+      <span class="ordine-ora">${oraRitiro ? "⏰ " + oraRitiro : ora}</span>
+    </div>
+    ${inRitardo ? `<div class="ordine-nota-tavolo ordine-ritardo">⏰ IN RITARDO — doveva essere pronto per le ${oraRitiro}</div>` : ""}
+    ${nota ? `<div class="ordine-nota-tavolo">⚠️ ${nota}</div>` : ""}
+    ${itemsHtml}
+    <div class="ordine-status-btns">
+      <button class="status-btn ${statusAttuale === "nuovo" ? "active" : ""}" data-status="nuovo">Da preparare</button>
+      <button class="status-btn ${statusAttuale === "in_preparazione" ? "active prep" : ""}" data-status="in_preparazione">In prep.</button>
+      <button class="status-btn ${statusAttuale === "pronto" ? "active done" : ""}" data-status="pronto">Pronto</button>
+    </div>`;
+
+  card.querySelectorAll(".status-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      db.collection("orders").doc(o.id).update({ [statusField]: btn.dataset.status });
+    });
+  });
+
+  return card;
+}
+
+// ---------- CUCINA: doppia colonna a scorrimento indipendente (asporto | tavoli), niente paginazione ----------
+function renderCucina() {
+  const statusField = statusFieldPerReparto("cucina");
+  const attivi = state.orders
+    .filter(o => !o.archived && (o.items || []).some(i => (i.reparto || "cucina") === "cucina"))
+    .sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+
+  const asporto = attivi.filter(o => String(o.table || "").startsWith("asporto#"));
+  const sala = attivi.filter(o => !String(o.table || "").startsWith("asporto#"));
+
+  const listaAsporto = $("#cucina-lista-asporto");
+  const listaSala = $("#cucina-lista-sala");
+  listaAsporto.innerHTML = "";
+  listaSala.innerHTML = "";
+
+  if (asporto.length === 0) {
+    listaAsporto.innerHTML = '<p class="hint-text">Nessun asporto in corso.</p>';
+  } else {
+    asporto.forEach(o => listaAsporto.appendChild(creaOrdineCard(o, "cucina", statusField)));
+  }
+  if (sala.length === 0) {
+    listaSala.innerHTML = '<p class="hint-text">Nessun ordine in corso.</p>';
+  } else {
+    sala.forEach(o => listaSala.appendChild(creaOrdineCard(o, "cucina", statusField)));
+  }
+}
+
+// ---------- BAR: lista unica paginata (come prima) ----------
+function renderBar() {
+  const reparto = "bar";
   const statusField = statusFieldPerReparto(reparto);
+  const lista = $("#bar-lista");
+  if (!lista) return;
 
   const attivi = state.orders
     .filter(o => !o.archived && (o.items || []).some(i => (i.reparto || "cucina") === reparto))
@@ -1293,64 +1362,22 @@ function renderRepartoView(reparto, listaId, pagId, infoId, precId, succId) {
   lista.innerHTML = "";
   if (attivi.length === 0) {
     lista.innerHTML = '<p class="hint-text">Nessun ordine in corso per questo reparto.</p>';
-    $("#" + pagId).classList.add("hidden");
+    $("#bar-paginazione").classList.add("hidden");
     return;
   }
 
   const perPagina = 4;
   const totPagine = Math.max(1, Math.ceil(attivi.length / perPagina));
-  if (paginaPerReparto[reparto] >= totPagine) paginaPerReparto[reparto] = totPagine - 1;
-  const paginaCorrente = paginaPerReparto[reparto];
+  if (paginaPerReparto.bar >= totPagine) paginaPerReparto.bar = totPagine - 1;
+  const paginaCorrente = paginaPerReparto.bar;
   const pagina = attivi.slice(paginaCorrente * perPagina, paginaCorrente * perPagina + perPagina);
 
-  $("#" + pagId).classList.toggle("hidden", attivi.length <= perPagina);
-  $("#" + infoId).textContent = (paginaCorrente + 1) + "/" + totPagine;
-  $("#" + precId).disabled = paginaCorrente === 0;
-  $("#" + succId).disabled = paginaCorrente >= totPagine - 1;
+  $("#bar-paginazione").classList.toggle("hidden", attivi.length <= perPagina);
+  $("#pag-info-bar").textContent = (paginaCorrente + 1) + "/" + totPagine;
+  $("#pag-prec-bar").disabled = paginaCorrente === 0;
+  $("#pag-succ-bar").disabled = paginaCorrente >= totPagine - 1;
 
-  pagina.forEach(o => {
-    const statusAttuale = o[statusField] || "nuovo";
-    const inRitardo = isOrdineInRitardo(o);
-    const card = document.createElement("div");
-    card.className = "ordine-card status-" + statusAttuale + (inRitardo ? " in-ritardo" : "");
-    const ora = o.createdAt?.toDate ? o.createdAt.toDate().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : "--:--";
-    const oraRitiro = o.readyBy ? new Date(o.readyBy).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : null;
-
-    let itemsHtml = "";
-    (o.items || []).filter(item => (item.reparto || "cucina") === reparto).forEach(item => {
-      let mods = buildMods(item);
-      itemsHtml += `
-        <div class="ordine-item">
-          <div class="ordine-item-nome">${qtyLabel(item)} ${item.name}</div>
-          ${mods.length ? `<div class="ordine-item-mod">${mods.join(" · ")}</div>` : ""}
-          ${item.note ? `<div class="ordine-item-nota">"${item.note}"</div>` : ""}
-        </div>`;
-    });
-
-    const nota = state.tableNotes[o.table];
-
-    card.innerHTML = `
-      <div class="ordine-top">
-        <span class="ordine-tavolo">${o.tableLabel || o.table}</span>
-        <span class="ordine-ora">${oraRitiro ? "⏰ " + oraRitiro : ora}</span>
-      </div>
-      ${inRitardo ? `<div class="ordine-nota-tavolo ordine-ritardo">⏰ IN RITARDO — doveva essere pronto per le ${oraRitiro}</div>` : ""}
-      ${nota ? `<div class="ordine-nota-tavolo">⚠️ ${nota}</div>` : ""}
-      ${itemsHtml}
-      <div class="ordine-status-btns">
-        <button class="status-btn ${statusAttuale === "nuovo" ? "active" : ""}" data-status="nuovo">Da preparare</button>
-        <button class="status-btn ${statusAttuale === "in_preparazione" ? "active prep" : ""}" data-status="in_preparazione">In prep.</button>
-        <button class="status-btn ${statusAttuale === "pronto" ? "active done" : ""}" data-status="pronto">Pronto</button>
-      </div>`;
-
-    card.querySelectorAll(".status-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        db.collection("orders").doc(o.id).update({ [statusField]: btn.dataset.status });
-      });
-    });
-
-    lista.appendChild(card);
-  });
+  pagina.forEach(o => lista.appendChild(creaOrdineCard(o, reparto, statusField)));
 }
 
 // ====================================================================
