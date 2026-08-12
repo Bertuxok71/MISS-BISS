@@ -335,7 +335,7 @@ body{
   .cucina-scroll-griglia{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; align-content:start; }
 }
 /* ASPORTO: orario, ritardo, suggerimenti nomi */
-.asporto-tile.in-ritardo{ border-color: var(--danger); background: rgba(193,68,59,0.15); color: var(--danger); font-weight:700; animation: pulse-ritardo 1.6s ease-in-out infinite; }
+.asporto-tile.in-ritardo{ border-color: var(--danger); background: rgba(193,68,59,0.15); color: var(--danger); font-weight:400; animation: pulse-ritardo 1.6s ease-in-out infinite; }
 .suggerimenti-list{ display:flex; flex-direction:column; gap:6px; margin:-8px 0 14px; }
 .suggerimento-item{
   text-align:left; background: var(--surface-2); border:1px solid var(--line); color:var(--text);
